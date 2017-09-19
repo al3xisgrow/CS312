@@ -39,9 +39,9 @@
             // 
             // m_bSolve
             // 
-            this.m_bSolve.Location = new System.Drawing.Point(159, 131);
+            this.m_bSolve.Location = new System.Drawing.Point(94, 131);
             this.m_bSolve.Name = "m_bSolve";
-            this.m_bSolve.Size = new System.Drawing.Size(75, 23);
+            this.m_bSolve.Size = new System.Drawing.Size(141, 23);
             this.m_bSolve.TabIndex = 0;
             this.m_bSolve.Text = "Solve!";
             this.m_bSolve.UseVisualStyleBackColor = true;
@@ -49,29 +49,31 @@
             // 
             // m_tbInput
             // 
-            this.m_tbInput.Location = new System.Drawing.Point(144, 53);
+            this.m_tbInput.Location = new System.Drawing.Point(79, 53);
             this.m_tbInput.Name = "m_tbInput";
-            this.m_tbInput.Size = new System.Drawing.Size(100, 20);
+            this.m_tbInput.Size = new System.Drawing.Size(166, 20);
             this.m_tbInput.TabIndex = 1;
+            this.m_tbInput.KeyDown += new System.Windows.Forms.KeyEventHandler(this.On_WindowKeyDown);
             // 
             // m_tbK
             // 
-            this.m_tbK.Location = new System.Drawing.Point(144, 79);
+            this.m_tbK.Location = new System.Drawing.Point(79, 79);
             this.m_tbK.Name = "m_tbK";
-            this.m_tbK.Size = new System.Drawing.Size(100, 20);
+            this.m_tbK.Size = new System.Drawing.Size(166, 20);
             this.m_tbK.TabIndex = 2;
+            this.m_tbK.KeyDown += new System.Windows.Forms.KeyEventHandler(this.On_WindowKeyDown);
             // 
             // m_tbOutput
             // 
-            this.m_tbOutput.Location = new System.Drawing.Point(144, 105);
+            this.m_tbOutput.Location = new System.Drawing.Point(79, 105);
             this.m_tbOutput.Name = "m_tbOutput";
-            this.m_tbOutput.Size = new System.Drawing.Size(100, 20);
+            this.m_tbOutput.Size = new System.Drawing.Size(166, 20);
             this.m_tbOutput.TabIndex = 3;
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(84, 56);
+            this.label1.Location = new System.Drawing.Point(19, 56);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(31, 13);
             this.label1.TabIndex = 4;
@@ -80,7 +82,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(84, 82);
+            this.label2.Location = new System.Drawing.Point(19, 82);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(13, 13);
             this.label2.TabIndex = 5;
@@ -89,7 +91,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(84, 108);
+            this.label3.Location = new System.Drawing.Point(19, 108);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(39, 13);
             this.label3.TabIndex = 6;
@@ -99,7 +101,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(275, 277);
+            this.ClientSize = new System.Drawing.Size(275, 194);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
@@ -109,6 +111,7 @@
             this.Controls.Add(this.m_bSolve);
             this.Name = "Form1";
             this.Text = "Form1";
+            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.On_WindowKeyDown);
             this.ResumeLayout(false);
             this.PerformLayout();
 
