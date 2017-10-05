@@ -69,7 +69,7 @@ namespace P1_Fermat
             // If all the tests completed with a gcd == 1, then the number is prime. Output the result.
             if (prime)
             {
-                m_tbOutput.Text = "Yes with probability: " + probability;
+                m_tbOutput.Text = "Yes with probability: " + (1.0 - probability);
             }
             else // The number is not prime.
             {
