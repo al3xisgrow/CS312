@@ -40,8 +40,9 @@ namespace _2_convex_hull
 
         private ConvexHull DivideAndConquer(List<System.Drawing.PointF> p_pointList)
         {
-            if (p_pointList.Count == 2 || p_pointList.Count == 3)
+            if (p_pointList.Count == 2)
             {
+                MakeClockwise(p_pointList);
                 return new ConvexHull(p_pointList);
             }
             else if (p_pointList.Count == 3)
@@ -74,77 +75,121 @@ namespace _2_convex_hull
 
         private ConvexHull Merge(ConvexHull p_left, ConvexHull p_right)
         {
-            findUpperTangent(p_left, p_right);
-            findLowerTangent(p_left, p_right);
+            FindUpperTangent(p_left, p_right);
+            FindLowerTangent(p_left, p_right);
             List<PointF> newHullPoints = new List<PointF>();
 
-            int leftIndex = p_left.Points.IndexOf(p_left.UpperTangentPoint);
-            int leftEndIndex = p_left.Points.IndexOf(p_left.LowerTangentPoint);
-            do
+            List<PointF> leftList = p_left.Points;
+            int leftStartIndex = leftList.IndexOf(p_left.UpperTangentPoint);
+            int leftIndex = leftStartIndex;
+            int leftEndIndex = leftList.IndexOf(p_left.LowerTangentPoint);
+            
+            if (leftList.Count < 4)
             {
-                newHullPoints.Add(p_left.Points[leftIndex]);
-                if (leftIndex == 0)
+                while (leftIndex != leftEndIndex)
                 {
-
+                    newHullPoints.Add(leftList[leftIndex]);
+                    leftIndex--;
+                    if (leftIndex < 0)
+                    {
+                        leftIndex = leftList.Count - 1;
+                    }
                 }
-
-            } while (leftIndex != leftEndIndex);
-
-            int rightIndex = p_right.Points.IndexOf(p_right.UpperTangentPoint);
-            int rightEndIndex = p_right.Points.IndexOf(p_right.LowerTangentPoint);
-            do
+                newHullPoints.Add(leftList[leftEndIndex]);
+            }
+            else
             {
-                newHullPoints.Add(p_right.Points[rightIndex]);
-            } while (rightIndex != rightEndIndex);
+                for (int i = 0; i <= leftEndIndex; i++)
+                {
+                    newHullPoints.Add(leftList[i]);
+                }
+                for (int i = leftStartIndex; i < leftList.Count; i++)
+                {
+                    //newHullPoints.Add(leftList[leftIndex]);
+                }
+            }
+
+            List<PointF> rightList = p_right.Points;
+            int rightStartIndex = rightList.IndexOf(p_right.LowerTangentPoint);
+            int rightIndex = rightStartIndex;
+            int rightEndIndex = rightList.IndexOf(p_right.UpperTangentPoint);
+
+            if (rightList.Count < 4)
+            {
+                while (rightIndex != rightEndIndex)
+                {
+                    newHullPoints.Add(rightList[rightIndex]);
+                    rightIndex--;
+                    if (rightIndex < 0)
+                    {
+                        rightIndex = rightList.Count - 1;
+                    }
+                }
+                newHullPoints.Add(rightList[rightEndIndex]);
+            }
+            
 
             return new ConvexHull(newHullPoints);
         }
 
-        private void findUpperTangent(ConvexHull p_left, ConvexHull p_right)
+        private void FindUpperTangent(ConvexHull p_left, ConvexHull p_right)
         {
-            Boolean leftPointChange = false;
-            Boolean rightPointChange = false;
+            Boolean leftPointChange = true;
+            Boolean rightPointChange = true;
             List<PointF> leftList = p_left.Points;
             List<PointF> rightList = p_right.Points;
             PointF leftPoint = p_left.Rightmost;
             PointF rightPoint = p_right.Leftmost;
 
-            do
-            {
-                float slope = calculateSlope(leftPoint, rightPoint);
+            Boolean tangentChanged = true;
+            while (tangentChanged) {
+                float slope = CalculateSlope(leftPoint, rightPoint);
                 float checkSlope = slope;
-                for (int i = 0; i < leftList.Count; i++)
-                {
-                    float currSlope = calculateSlope(leftList[i], rightPoint);
-                    if (currSlope < slope)
-                    {
+                int leftIndex = leftList.IndexOf(leftPoint) == 0 ? leftList.Count-1 : leftList.IndexOf(leftPoint) - 1;
+                do {
+                    float currSlope = CalculateSlope(leftList[leftIndex], rightPoint);
+                    if (currSlope < checkSlope) {
                         checkSlope = currSlope;
-                        leftPoint = leftList[i];
+                        leftPoint = leftList[leftIndex];
                         leftPointChange = true;
+                        if (leftIndex == 0) {
+                            leftIndex = leftList.Count;
+                        }
+                        leftIndex--;
                     }
-                }
+                    else {
+                        leftPointChange = false;
+                    }
+                } while (leftPointChange);
 
-                for (int j = 0; j < rightList.Count; j++)
-                {
-                    float currSlope = calculateSlope(leftPoint, rightList[j]);
-                    if (currSlope > slope)
-                    {
+                int rightIndex = rightList.IndexOf(rightPoint) == rightList.Count - 1 ? 0 : rightList.IndexOf(rightPoint) + 1;
+                do {
+                    float currSlope = CalculateSlope(leftPoint, rightList[rightIndex]);
+                    if (currSlope > checkSlope) {
                         checkSlope = currSlope;
-                        rightPoint = rightList[j];
+                        rightPoint = rightList[rightIndex];
                         rightPointChange = true;
+                        if (rightIndex == rightList.Count - 1) {
+                            rightIndex = -1;
+                        }
+                        rightIndex++;
                     }
+                    else {
+                        rightPointChange = false;
+                    }
+                } while (rightPointChange);
+                if (checkSlope != slope) {
+                    tangentChanged = true;
                 }
-                if (checkSlope == slope)
-                {
-                    leftPointChange = rightPointChange = false;
+                else {
+                    tangentChanged = false;
                 }
-            } while (leftPointChange || rightPointChange);
-
+            }
             p_left.UpperTangentPoint = leftPoint;
             p_right.UpperTangentPoint = rightPoint;
         }
         
-        private void findLowerTangent(ConvexHull p_left, ConvexHull p_right)
+        private void FindLowerTangent(ConvexHull p_left, ConvexHull p_right)
         {
             Boolean leftPointChange = false;
             Boolean rightPointChange = false;
@@ -153,63 +198,109 @@ namespace _2_convex_hull
             PointF leftPoint = p_left.Rightmost;
             PointF rightPoint = p_right.Leftmost;
 
-            do
+            Boolean tangentChanged = true;
+            while (tangentChanged)
             {
-                float slope = calculateSlope(leftPoint, rightPoint);
+                float slope = CalculateSlope(leftPoint, rightPoint);
+                int leftIndex = leftList.IndexOf(leftPoint) == leftList.Count - 1 ? 0: leftList.IndexOf(leftPoint) + 1;
                 float checkSlope = slope;
-                for (int i = 0; i < leftList.Count; i++)
-                {
-                    float currSlope = calculateSlope(leftList[i], rightPoint);
-                    if (currSlope > slope)
-                    {
+                do {
+                    float currSlope = CalculateSlope(leftList[leftIndex], rightPoint);
+                    if (currSlope > checkSlope) {
                         checkSlope = currSlope;
-                        leftPoint = leftList[i];
+                        leftPoint = leftList[leftIndex];
                         leftPointChange = true;
+                        if (leftIndex == leftList.Count -1) {
+                            leftIndex = -1;
+                        }
+                        leftIndex++;
                     }
-                }
+                    else {
+                        leftPointChange = false;
+                    }
+                } while (leftPointChange);
 
-                for (int j = 0; j < rightList.Count; j++)
-                {
-                    float currSlope = calculateSlope(leftPoint, rightList[j]);
-                    if (currSlope < slope)
-                    {
+                int rightIndex = rightList.IndexOf(rightPoint) == 0 ? rightList.Count - 1 : rightList.IndexOf(rightPoint) - 1;
+                do {
+                    float currSlope = CalculateSlope(leftPoint, rightList[rightIndex]);
+                    if (currSlope < checkSlope) {
                         checkSlope = currSlope;
-                        rightPoint = rightList[j];
+                        rightPoint = rightList[rightIndex];
                         rightPointChange = true;
+                        if (rightIndex == 0)
+                        {
+                            rightIndex = rightList.Count;
+                        }
+                        rightIndex--;
                     }
-                }
+                    else
+                    {
+                        rightPointChange = false;
+                    }
+                } while (rightPointChange);
 
-                if (checkSlope == slope)
+                if (checkSlope != slope)
                 {
-                    leftPointChange = rightPointChange = false;
+                    tangentChanged = true;
                 }
-            } while (leftPointChange || rightPointChange);
-
+                else
+                {
+                    tangentChanged = false;
+                }
+            } 
             p_left.LowerTangentPoint = leftPoint;
             p_right.LowerTangentPoint = rightPoint;
-            
         }
 
-        private float calculateSlope(PointF leftPoint, PointF rightPoint)
+        private float CalculateSlope(PointF leftPoint, PointF rightPoint)
         {
             return ((leftPoint.Y - rightPoint.Y)/(rightPoint.X - leftPoint.X));
         }
 
         private void MakeClockwise(List<PointF> p_list)
         {
-            float slopeOne = calculateSlope(p_list[0], p_list[1]);
-            float slopeTwo = calculateSlope(p_list[0], p_list[2]);
-            if (slopeOne < slopeTwo)
+            if (p_list.Count == 2)
             {
-                PointF temp = p_list[1];
-                p_list[1] = p_list[2];
-                p_list[2] = temp;
+                float slope = CalculateSlope(p_list[0], p_list[1]);
+                if (slope > 0)
+                {
+                    PointF temp = p_list[0];
+                    //p_list[0] = p_list[1];
+                    //p_list[1] = temp;
+                }
             }
+            else
+            {
+                float slopeOne = CalculateSlope(p_list[0], p_list[1]);
+                float slopeTwo = CalculateSlope(p_list[0], p_list[2]);
+                if (slopeOne < slopeTwo)
+                {
+                    PointF temp = p_list[1];
+                    p_list[1] = p_list[2];
+                    p_list[2] = temp;
+                }
+            }
+
         }
 
         public void Draw(ConvexHull p_hull)
         {
-            throw new NotImplementedException();
+            List<PointF> points = p_hull.Points;
+            for (int i = 0; i < points.Count; i++)
+            {
+                PointF currPoint = points[i];
+                PointF nextPoint;
+                if (i == points.Count-1)
+                {
+                    nextPoint = points[0];
+                }
+                else
+                {
+                    nextPoint = points[i + 1];
+                }
+                g.DrawLine(Pens.Black, currPoint, nextPoint);
+                
+            }
         }
     }
 }
