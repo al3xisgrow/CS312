@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
@@ -163,26 +164,30 @@ namespace NetworkRouting
         private void solveButton_Clicked()
         {
             // *** Implement this method, use the variables "startNodeIndex" and "stopNodeIndex" as the indices for your start and stop points, respectively ***
+            ScrollMessageBox msg = new ScrollMessageBox();
             String str = "Adjacency List:\n";
+            msg.appendText("Adjacency List:");
             for (int i = 0; i < adjacencyList.Count; i++)
             {
-                str += ("\tnode " + i + ":");
+                String nodes = "";
+                nodes += ("\tnode " + i + ":");
                 List<int> list = adjacencyList[i].ToList();
                 for (int j = 0; j < adjacencyList[i].Count; j++)
                 {
-                    str += " " + list[j];
+                    nodes += ("\t" + list[j]);
                 }
-                str += "\n";
+                //str += "\n";
+                msg.appendText(nodes);
             }
-            MessageBox.Show(str);
-
+            //msg.setText(str);
+            msg.Show();
             /** Dykstra's Algorithm:
              * Dykstra(G,l,s)
                 for all v in V
-                    dist(V) = inf
+                    dist(v) = inf
                     prev(v) = null
                 distance(s) = 0
-                H.makeQueue
+                H.makeQueue(V)
                 while H not empty
                     u = H.deleteMin() //pops the smalles distance node
                     for all (u,v) in Edges
@@ -191,14 +196,101 @@ namespace NetworkRouting
                             prev(v) = u
                             H.decreaseKey(e) // Tells the queue that somebody's priority has changed. Might need to bump it up the priority queue
              */
-            int[] distance = new int[adjacencyList.Count];
-            int[] previous = new int[adjacencyList.Count];
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            runArrayQueue();
+            sw.Stop();
+            string elapsed = (sw.Elapsed.TotalMilliseconds/1000).ToString();
+            arrayTimeBox.Text = elapsed;
+            display();
+        }
+
+        int[] g_distance;
+        int[] g_previous;
+        int[] g_array;
+
+        private void runArrayQueue()
+        {
+            g_distance = new int[adjacencyList.Count];
+            g_previous = new int[adjacencyList.Count];
+            g_array = new int[adjacencyList.Count];
+            ArrayQueue queue= new ArrayQueue();
+            Dykstra(queue, g_distance, g_previous, g_array);
+
+            int currIndex = stopNodeIndex;
+            string path = "Path: ";
+            while (currIndex != startNodeIndex)
+            {
+                if (currIndex < 0)
+                    break;
+                path += (currIndex + "-");
+                currIndex = g_previous[currIndex];
+                if (currIndex == startNodeIndex)
+                {
+                    path += startNodeIndex;
+                    MessageBox.Show(path);
+                }
+            }
+        }
+
+        private void Dykstra(IQueue queue, int[] distance, int[] previous, int[] array)
+        {
             for (int i = 0; i < adjacencyList.Count; i++)
             {
-                distance[i] = -1;
+                distance[i] = int.MaxValue;
                 previous[i] = -1;
+                array[i] = 0;
             }
             distance[startNodeIndex] = 0;
+            queue.makeQueue(distance, previous, array, adjacencyList.Count);
+            while (!queue.isEmpty())
+            {
+                int node = queue.deleteMin();
+                for (int i = 0; i < adjacencyList[node].Count; i++)
+                {
+                    int neighbor = adjacencyList[node].ToList()[i];
+                    int cost = (int) calculateCost(node, neighbor);
+                    if (distance[neighbor] > (distance[node] + cost))
+                    {
+                        distance[neighbor] = distance[node] + cost;
+                        previous[neighbor] = node;
+                        queue.decreaseKey(neighbor);
+                    }
+                }
+            }
+
+        }
+
+        private void display()
+        {
+            Graphics graphics = Graphics.FromImage(pictureBox.Image);
+            Pen pen = new Pen(Color.Black);
+
+            int currIndex = stopNodeIndex;
+            while (currIndex != startNodeIndex)
+            {
+                if (g_previous[currIndex] == -1 && g_previous[currIndex] != stopNodeIndex)
+                {
+                    resetImageToPoints(points);
+                    MessageBox.Show("There is no path from Source: " + startNodeIndex + " to Target: " + stopNodeIndex);
+                    return;
+                }
+                graphics.DrawLine(pen, points[currIndex], points[g_previous[currIndex]]);
+                this.graphics = graphics;
+                pictureBox.Invalidate();
+                currIndex = g_previous[currIndex];
+            }
+
+            pathCostBox.Text = g_distance[stopNodeIndex].ToString();
+        }
+
+        private double calculateCost(int _node, int _neighbor)
+        {
+            PointF node = points[_node];
+            PointF neighbor = points[_neighbor];
+            float rise = node.Y - neighbor.Y;
+            float run = node.X - neighbor.X;
+            return (Math.Sqrt(rise * rise + run * run));
         }
 
         private Boolean startStopToggle = true;
