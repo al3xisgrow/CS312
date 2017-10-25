@@ -181,50 +181,59 @@ namespace NetworkRouting
             //}
             ////msg.setText(str);
             //msg.Show();
-            /** Dykstra's Algorithm:
-             * Dykstra(G,l,s)
-                for all v in V
-                    dist(v) = inf
-                    prev(v) = null
-                distance(s) = 0
-                H.makeQueue(V)
-                while H not empty
-                    u = H.deleteMin() //pops the smalles distance node
-                    for all (u,v) in Edges
-                        if dist(v) > dist(u) + cost(u,v)
-                            dist(v) = dist(u) + cost(u,v)
-                            prev(v) = u
-                            H.decreaseKey(e) // Tells the queue that somebody's priority has changed. Might need to bump it up the priority queue
-             */
             Stopwatch sw = new Stopwatch();
+
+
+            sw.Reset();
             sw.Start();
-            runArrayQueue();
+            runHeapQueue();
             sw.Stop();
-            string elapsed = (sw.Elapsed.TotalMilliseconds/1000).ToString();
-            arrayTimeBox.Text = elapsed;
-            display();
+            double heapTime = sw.Elapsed.TotalMilliseconds;
+            string elapsed = (heapTime/ 1000).ToString();
+            heapTimeBox.Text = elapsed;
+
+
+
+            if (arrayCheckBox.Checked)
+            {
+                sw.Start();
+                runArrayQueue();
+                sw.Stop();
+                double arrayTime = (sw.Elapsed.TotalMilliseconds);
+                elapsed = (arrayTime / 1000).ToString();
+                arrayTimeBox.Text = elapsed;
+
+                double speedup = arrayTime / heapTime;
+                differenceBox.Text = speedup.ToString();
+            }
+
+            display(arrayCheckBox.Checked);
         }
 
-        int[] g_distance;
-        int[] g_previous;
-        int[] g_array;
+        int[] g_distanceAQ;
+        int[] g_previousAQ;
+        int[] g_arrayAQ;
+
+        int[] g_distanceHQ;
+        int[] g_previousHQ;
+        int[] g_arrayHQ;
 
         private void runArrayQueue()
         {
-            g_distance = new int[adjacencyList.Count];
-            g_previous = new int[adjacencyList.Count];
-            g_array = new int[adjacencyList.Count];
+            g_distanceAQ = new int[adjacencyList.Count];
+            g_previousAQ = new int[adjacencyList.Count];
+            g_arrayAQ = new int[adjacencyList.Count];
             ArrayQueue queue= new ArrayQueue();
-            Dykstra(queue, g_distance, g_previous, g_array);
+            Dykstra(queue, g_distanceAQ, g_previousAQ, g_arrayAQ);
 
-            int currIndex = stopNodeIndex;
+            //int currIndex = stopNodeIndex;
             //string path = "Path: ";
             //while (currIndex != startNodeIndex)
             //{
             //    if (currIndex < 0)
             //        break;
             //    path += (currIndex + "-");
-            //    currIndex = g_previous[currIndex];
+            //    currIndex = g_previousAQ[currIndex];
             //    if (currIndex == startNodeIndex)
             //    {
             //        path += startNodeIndex;
@@ -233,6 +242,47 @@ namespace NetworkRouting
             //}
         }
 
+        private void runHeapQueue()
+        {
+            g_distanceHQ = new int[points.Count];
+            g_previousHQ = new int[points.Count];
+            g_arrayHQ = new int[points.Count];
+            BinaryHeap queue = new BinaryHeap();
+            Dykstra(queue, g_distanceHQ, g_previousHQ, g_arrayHQ);
+            //int currIndex = stopNodeIndex;
+            //string path = "Path: ";
+            //while (currIndex != startNodeIndex)
+            //{
+            //    if (currIndex < 0)
+            //    {
+            //        MessageBox.Show(path);
+            //        break;
+            //    }
+            //    path += (currIndex + "-");
+            //    currIndex = g_previousHQ[currIndex];
+            //    if (currIndex == startNodeIndex)
+            //    {
+            //        path += startNodeIndex;
+            //        MessageBox.Show(path);
+            //    }
+            //}
+        }
+
+        /** Dykstra's Algorithm:
+         * Dykstra(G,l,s)
+            for all v in V
+                dist(v) = inf
+                prev(v) = null
+            distance(s) = 0
+            H.makeQueue(V)
+            while H not empty
+                u = H.deleteMin() //pops the smalles distance node
+                for all (u,v) in Edges
+                    if dist(v) > dist(u) + cost(u,v)
+                        dist(v) = dist(u) + cost(u,v)
+                        prev(v) = u
+                        H.decreaseKey(e) // Tells the queue that somebody's priority has changed. Might need to bump it up the priority queue
+         */
         private void Dykstra(IQueue queue, int[] distance, int[] previous, int[] array)
         {
             for (int i = 0; i < adjacencyList.Count; i++)
@@ -262,27 +312,47 @@ namespace NetworkRouting
 
         }
 
-        private void display()
+        private void display(bool showArray)
         {
+            int[] backtrace;
+            int[] dist;
+            if (showArray)
+            {
+                backtrace = g_previousAQ;
+                dist = g_distanceAQ;
+            }
+            else
+            {
+                backtrace = g_previousHQ;
+                dist = g_distanceHQ;
+            }
             Graphics graphics = Graphics.FromImage(pictureBox.Image);
             Pen pen = new Pen(Color.Black);
 
             int currIndex = stopNodeIndex;
             while (currIndex != startNodeIndex)
             {
-                if (g_previous[currIndex] == -1 && g_previous[currIndex] != stopNodeIndex)
+                if (backtrace[currIndex] == -1 && backtrace[currIndex] != stopNodeIndex)
                 {
                     resetImageToPoints(points);
                     MessageBox.Show("There is no path from Source: " + startNodeIndex + " to Target: " + stopNodeIndex);
                     return;
                 }
-                graphics.DrawLine(pen, points[currIndex], points[g_previous[currIndex]]);
+                graphics.DrawLine(pen, points[currIndex], points[backtrace[currIndex]]);
+                drawDistance(ref graphics, currIndex, backtrace);
                 this.graphics = graphics;
                 pictureBox.Invalidate();
-                currIndex = g_previous[currIndex];
+                currIndex = backtrace[currIndex];
             }
 
-            pathCostBox.Text = g_distance[stopNodeIndex].ToString();
+            
+
+            pathCostBox.Text = dist[stopNodeIndex].ToString();
+        }
+
+        private void drawDistance(ref Graphics graphics, int currIndex, int[] backtrace)
+        {
+            graphics.DrawString(((int)calculateCost(currIndex, backtrace[currIndex])).ToString(), new Font("Arial", 11), new SolidBrush(Color.Black), midpoint(points[currIndex], points[backtrace[currIndex]]));
         }
 
         private double calculateCost(int _node, int _neighbor)
@@ -292,6 +362,11 @@ namespace NetworkRouting
             float rise = node.Y - neighbor.Y;
             float run = node.X - neighbor.X;
             return (Math.Sqrt(rise * rise + run * run));
+        }
+
+        private PointF midpoint(PointF p1, PointF p2)
+        {
+            return new PointF((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2);
         }
 
         private Boolean startStopToggle = true;

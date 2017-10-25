@@ -9,6 +9,8 @@ namespace NetworkRouting
     {
         void makeQueue(int[] distance, int[] prev, int[] array, int numNodes);
 
+        void insert(int node);
+
         int deleteMin();
 
         void decreaseKey(int node);

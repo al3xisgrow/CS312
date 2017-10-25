@@ -38,16 +38,17 @@ namespace NetworkRouting
                 queue[minNode] = -1;    // effectively removes it from the queue.
                 removed++;
             }
-            else
-            {
-                int tyler = -1;
-            }
             return minNode;
+        }
+
+        public void insert(int node)
+        {
+            // do nothing. The queue was already created with everything in it. 
         }
 
         public void decreaseKey(int node)
         {
-            // do nothing.
+            // do nothing. Because I iterate over the entire distance array to find the minimum ever time. 
         }
 
         public bool isEmpty()
