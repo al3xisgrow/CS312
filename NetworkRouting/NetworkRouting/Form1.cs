@@ -164,23 +164,23 @@ namespace NetworkRouting
         private void solveButton_Clicked()
         {
             // *** Implement this method, use the variables "startNodeIndex" and "stopNodeIndex" as the indices for your start and stop points, respectively ***
-            ScrollMessageBox msg = new ScrollMessageBox();
-            String str = "Adjacency List:\n";
-            msg.appendText("Adjacency List:");
-            for (int i = 0; i < adjacencyList.Count; i++)
-            {
-                String nodes = "";
-                nodes += ("\tnode " + i + ":");
-                List<int> list = adjacencyList[i].ToList();
-                for (int j = 0; j < adjacencyList[i].Count; j++)
-                {
-                    nodes += ("\t" + list[j]);
-                }
-                //str += "\n";
-                msg.appendText(nodes);
-            }
-            //msg.setText(str);
-            msg.Show();
+            //ScrollMessageBox msg = new ScrollMessageBox();
+            //String str = "Adjacency List:\n";
+            //msg.appendText("Adjacency List:");
+            //for (int i = 0; i < adjacencyList.Count; i++)
+            //{
+            //    String nodes = "";
+            //    nodes += ("\tnode " + i + ":");
+            //    List<int> list = adjacencyList[i].ToList();
+            //    for (int j = 0; j < adjacencyList[i].Count; j++)
+            //    {
+            //        nodes += ("\t" + list[j]);
+            //    }
+            //    //str += "\n";
+            //    msg.appendText(nodes);
+            //}
+            ////msg.setText(str);
+            //msg.Show();
             /** Dykstra's Algorithm:
              * Dykstra(G,l,s)
                 for all v in V
@@ -218,19 +218,19 @@ namespace NetworkRouting
             Dykstra(queue, g_distance, g_previous, g_array);
 
             int currIndex = stopNodeIndex;
-            string path = "Path: ";
-            while (currIndex != startNodeIndex)
-            {
-                if (currIndex < 0)
-                    break;
-                path += (currIndex + "-");
-                currIndex = g_previous[currIndex];
-                if (currIndex == startNodeIndex)
-                {
-                    path += startNodeIndex;
-                    MessageBox.Show(path);
-                }
-            }
+            //string path = "Path: ";
+            //while (currIndex != startNodeIndex)
+            //{
+            //    if (currIndex < 0)
+            //        break;
+            //    path += (currIndex + "-");
+            //    currIndex = g_previous[currIndex];
+            //    if (currIndex == startNodeIndex)
+            //    {
+            //        path += startNodeIndex;
+            //        MessageBox.Show(path);
+            //    }
+            //}
         }
 
         private void Dykstra(IQueue queue, int[] distance, int[] previous, int[] array)
@@ -246,11 +246,12 @@ namespace NetworkRouting
             while (!queue.isEmpty())
             {
                 int node = queue.deleteMin();
+                if (distance[node] == int.MaxValue) return;
                 for (int i = 0; i < adjacencyList[node].Count; i++)
                 {
                     int neighbor = adjacencyList[node].ToList()[i];
                     int cost = (int) calculateCost(node, neighbor);
-                    if (distance[neighbor] > (distance[node] + cost))
+                    if (distance[neighbor] == int.MaxValue || distance[neighbor] > (distance[node] + cost))
                     {
                         distance[neighbor] = distance[node] + cost;
                         previous[neighbor] = node;
