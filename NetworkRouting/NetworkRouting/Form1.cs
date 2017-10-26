@@ -181,21 +181,29 @@ namespace NetworkRouting
             //}
             ////msg.setText(str);
             //msg.Show();
+
+            // Initializes the HeapQueue arrays.
+            g_distanceHQ = new int[points.Count];
+            g_previousHQ = new int[points.Count];
+            g_arrayHQ = new int[points.Count];
+
+            // Stopwatch used to measure performance.
             Stopwatch sw = new Stopwatch();
-
-
-            sw.Reset();
             sw.Start();
             runHeapQueue();
             sw.Stop();
             double heapTime = sw.Elapsed.TotalMilliseconds;
             string elapsed = (heapTime/ 1000).ToString();
             heapTimeBox.Text = elapsed;
-
-
-
+            
+            // If the compare array box is checked, run the test on the ArrayQueue
             if (arrayCheckBox.Checked)
             {
+                g_distanceAQ = new int[adjacencyList.Count];
+                g_previousAQ = new int[adjacencyList.Count];
+                g_arrayAQ = new int[adjacencyList.Count];
+
+                sw.Reset();
                 sw.Start();
                 runArrayQueue();
                 sw.Stop();
@@ -210,62 +218,62 @@ namespace NetworkRouting
             display(arrayCheckBox.Checked);
         }
 
-        int[] g_distanceAQ;
-        int[] g_previousAQ;
-        int[] g_arrayAQ;
+        // These arrays are used for the ArrayQueue. They are passed by reference in makequeue. 
+        int[] g_distanceAQ;         // Holds the distance values for each node. The indexes represent the nodes.
+        int[] g_previousAQ;         // Holds the previous node number for each node. 
+                                    // if g_previousAQ[2] = 3, then there is an edge 3->2 that is currently the lowest cost edge to node 2
+        int[] g_arrayAQ;            // Array structure that becomes the queue. Just given default values and then passed in.
 
-        int[] g_distanceHQ;
-        int[] g_previousHQ;
-        int[] g_arrayHQ;
+        int[] g_distanceHQ;         // Same function, just for the heap
+        int[] g_previousHQ;         // Same function, just for the heap
+        int[] g_arrayHQ;            // Same function, just for the heap
 
+        // Creates an ArrayQueue and calls Dykstra's with the ArrayQueue Arrays from above.
         private void runArrayQueue()
         {
-            g_distanceAQ = new int[adjacencyList.Count];
-            g_previousAQ = new int[adjacencyList.Count];
-            g_arrayAQ = new int[adjacencyList.Count];
             ArrayQueue queue= new ArrayQueue();
             Dykstra(queue, g_distanceAQ, g_previousAQ, g_arrayAQ);
 
-            //int currIndex = stopNodeIndex;
-            //string path = "Path: ";
-            //while (currIndex != startNodeIndex)
-            //{
-            //    if (currIndex < 0)
-            //        break;
-            //    path += (currIndex + "-");
-            //    currIndex = g_previousAQ[currIndex];
-            //    if (currIndex == startNodeIndex)
-            //    {
-            //        path += startNodeIndex;
-            //        MessageBox.Show(path);
-            //    }
-            //}
+            /*
+            int currIndex = stopNodeIndex;
+            string path = "Path: ";
+            while (currIndex != startNodeIndex)
+            {
+                if (currIndex < 0)
+                    break;
+                path += (currIndex + "-");
+                currIndex = g_previousAQ[currIndex];
+                if (currIndex == startNodeIndex)
+                {
+                    path += startNodeIndex;
+                    MessageBox.Show(path);
+                }
+            }
+            */
         }
 
+        // Creates an HeapQueue and calls Dykstra's with the ArrayQueue Arrays from above.
         private void runHeapQueue()
         {
-            g_distanceHQ = new int[points.Count];
-            g_previousHQ = new int[points.Count];
-            g_arrayHQ = new int[points.Count];
-            BinaryHeap queue = new BinaryHeap();
+            HeapQueue queue = new HeapQueue();
             Dykstra(queue, g_distanceHQ, g_previousHQ, g_arrayHQ);
-            //int currIndex = stopNodeIndex;
-            //string path = "Path: ";
-            //while (currIndex != startNodeIndex)
-            //{
-            //    if (currIndex < 0)
-            //    {
-            //        MessageBox.Show(path);
-            //        break;
-            //    }
-            //    path += (currIndex + "-");
-            //    currIndex = g_previousHQ[currIndex];
-            //    if (currIndex == startNodeIndex)
-            //    {
-            //        path += startNodeIndex;
-            //        MessageBox.Show(path);
-            //    }
-            //}
+            /* int currIndex = stopNodeIndex;
+            string path = "Path: ";
+            while (currIndex != startNodeIndex)
+            {
+                if (currIndex < 0)
+                {
+                    MessageBox.Show(path);
+                    break;
+                }
+                path += (currIndex + "-");
+                currIndex = g_previousHQ[currIndex];
+                if (currIndex == startNodeIndex)
+                {
+                    path += startNodeIndex;
+                    MessageBox.Show(path);
+                }
+            } */
         }
 
         /** Dykstra's Algorithm:
@@ -285,22 +293,30 @@ namespace NetworkRouting
          */
         private void Dykstra(IQueue queue, int[] distance, int[] previous, int[] array)
         {
+            // Initialize the values in the arrays.
             for (int i = 0; i < adjacencyList.Count; i++)
             {
                 distance[i] = int.MaxValue;
                 previous[i] = -1;
                 array[i] = 0;
             }
+            // Set distance to start node to 0
             distance[startNodeIndex] = 0;
+            // Call makeQueue. This has different run time depending on the type of IQueue
             queue.makeQueue(distance, previous, array, adjacencyList.Count);
+            // Executes the loop until everything has been popped from the loop.
             while (!queue.isEmpty())
             {
+                // Call to pop from front of priority queue. 
                 int node = queue.deleteMin();
+                // Error Checking. This should never evaluate to true.
                 if (distance[node] == int.MaxValue) return;
+                // For all the nodes that this node is directionally connected to, see if the distance can be shortened.
                 for (int i = 0; i < adjacencyList[node].Count; i++)
                 {
                     int neighbor = adjacencyList[node].ToList()[i];
                     int cost = (int) calculateCost(node, neighbor);
+                    // If the current distance is greater than if it went through this node.
                     if (distance[neighbor] == int.MaxValue || distance[neighbor] > (distance[node] + cost))
                     {
                         distance[neighbor] = distance[node] + cost;
@@ -312,6 +328,8 @@ namespace NetworkRouting
 
         }
 
+        // This function prints the path onto the pictureBox. The boolean value determines which search's results are used to print. 
+        // If true, it prints the results from the ArrayQueue. It's now irrelevant, as they both are completed. But was helpful in debugging.
         private void display(bool showArray)
         {
             int[] backtrace;
@@ -330,8 +348,10 @@ namespace NetworkRouting
             Pen pen = new Pen(Color.Black);
 
             int currIndex = stopNodeIndex;
+            // Start from the last node, and work backwards through the path using the previous array until I arrive at the start node.
             while (currIndex != startNodeIndex)
             {
+                // This catches if there is no path from the target to the source. If backtrace[currIndex] == -1, we reached a root node that isn't the source node. So there's no path.
                 if (backtrace[currIndex] == -1 && backtrace[currIndex] != stopNodeIndex)
                 {
                     resetImageToPoints(points);
@@ -344,17 +364,19 @@ namespace NetworkRouting
                 pictureBox.Invalidate();
                 currIndex = backtrace[currIndex];
             }
-
-            
-
+            // Update the total distance of the path.
             pathCostBox.Text = dist[stopNodeIndex].ToString();
         }
 
+        // Draws the cost of each segment of the path next to the line.
         private void drawDistance(ref Graphics graphics, int currIndex, int[] backtrace)
         {
-            graphics.DrawString(((int)calculateCost(currIndex, backtrace[currIndex])).ToString(), new Font("Arial", 11), new SolidBrush(Color.Black), midpoint(points[currIndex], points[backtrace[currIndex]]));
+            graphics.DrawString(((int)calculateCost(currIndex, backtrace[currIndex])).ToString(), 
+                                                    new Font("Arial", 11), new SolidBrush(Color.Black), 
+                                                    midpoint(points[currIndex], points[backtrace[currIndex]]));
         }
 
+        // Calculates the cost between two points by using the pythagorean theorem.
         private double calculateCost(int _node, int _neighbor)
         {
             PointF node = points[_node];
@@ -364,6 +386,7 @@ namespace NetworkRouting
             return (Math.Sqrt(rise * rise + run * run));
         }
 
+        // Calculates the midpoint between two points. Used to draw the costs.
         private PointF midpoint(PointF p1, PointF p2)
         {
             return new PointF((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2);
