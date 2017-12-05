@@ -39,20 +39,24 @@ namespace GeneticsLab
             alignment[0] = alignment[1] = "";
 
             int maxLengthVal = banded ? 15001 : MaxCharactersToAlign;
-
+            // If the sequences are longer than the desired alignment length, align only the desired amount.
             int rows = maxLengthVal < sequenceA.Sequence.Length + 1? maxLengthVal : sequenceA.Sequence.Length + 1;
             int cols = maxLengthVal < sequenceB.Sequence.Length + 1? maxLengthVal : sequenceB.Sequence.Length + 1;
-
+            // Create the cost matrix and the matrix used to track the path.
             int[,] matrix = new int[rows,cols];
             int[,] prev = new int[rows,cols];
             initializeMatrices(matrix, prev, rows, cols);
 
+            // If it's not banded, do the unrestriced algorithm. Otherwise do banded.
             if (!banded) unrestricted(matrix, prev, rows, cols, sequenceA, sequenceB);
             else bandedAlg(matrix, prev, rows, cols, sequenceA, sequenceB);
 
+            // The score is stored in the last cell.
             score = matrix[rows - 1, cols - 1];
+            // Find the alignment strings by using the path stored in prev
             findAlignments(alignment, prev, rows, cols, score, sequenceA.Sequence, sequenceB.Sequence);
 
+            // If the strings are too long to display, just display 100 characters.
             if (alignment[0].Length > 100) alignment[0] = alignment[0].Substring(0, 100);
             if (alignment[1].Length > 100) alignment[1] = alignment[1].Substring(0, 100);
 
@@ -62,6 +66,7 @@ namespace GeneticsLab
 
         private void findAlignments(string[] alignment, int[,] prev, int rows, int cols, int score, string sequenceA, string sequenceB)
         {
+            // There was no alignment made. Return.
             if (score == int.MaxValue)
             {
                 alignment[0] = alignment[1] = "No Alignment Possible";
@@ -69,25 +74,30 @@ namespace GeneticsLab
             }
 
             int row, col;
-            row = rows - 1;
-            col = cols - 1;
+            row = rows - 1;     // Index of last row
+            col = cols - 1;     // Index of last column
+            // Continue building the strings until we reach the first cell 
             while (row > 0 && cols > 0)
             {
+                // Get path value.
                 switch (prev[row, col])
                 {
                     case DIAG:
+                        // Was either a match or mismatch
                         alignment[0] = alignment[0].Insert(0, sequenceA.Substring(row-1, 1));
                         alignment[1] = alignment[1].Insert(0, sequenceB.Substring(col-1, 1));
                         row--;
                         col--;
                         break;
                     case UP:
+                        // indel from above
                         // keep left, insert - in top
                         alignment[0] = alignment[0].Insert(0, sequenceA.Substring(row-1, 1));
                         alignment[1] = alignment[1].Insert(0, "-");
                         row--;
                         break;
                     case LEFT:
+                        // indel from the left
                         // keep top, insert - in left
                         alignment[0] = alignment[0].Insert(0, "-");
                         alignment[1] = alignment[1].Insert(0, sequenceB.Substring(col-1, 1));
@@ -99,52 +109,53 @@ namespace GeneticsLab
 
         private void bandedAlg(int[,] matrix, int[,] prev, int rows, int cols, GeneSequence sequenceA, GeneSequence sequenceB)
         {
+            // If the difference is greater than 3, they cannot be aligned.
             if (Math.Abs(rows - cols) > 3)
             {
+                // Set the score cell to int.MaxValue to indicate that they weren't aligned.
                 matrix[rows - 1, cols - 1] = int.MaxValue;
                 return;
             }
 
             int i, j;
             i = j = 0;
-            try
+            // Get the larger of the two out of the rows and columns. This is because we need to get to the bottom right.
+            int maxD = rows > cols ? rows : cols;
+            // This loop travels down the diagonal
+            for (i = 1; i < maxD; i++)
             {
-                int maxD = rows > cols ? rows : cols;
-                for (i = 1; i < maxD; i++)
+                // This loop uses an offset to compute the cell on the diagonal, 3 to the right, and 3 below.
+                for (j = 0; j < 4; j++)
                 {
-                    for (j = 0; j < 4; j++)
-                    {
-                        if (i + j < cols && i < rows) matrix[i, i + j] = computeVal(matrix, prev, i, i + j, sequenceA, sequenceB);
-                        if (i + j < rows && i < cols) matrix[i + j, i] = computeVal(matrix, prev, i + j, i, sequenceA, sequenceB);
-                    }
+                    // Compute cell to the right
+                    if (i + j < cols && i < rows) matrix[i, i + j] = computeVal(matrix, prev, i, i + j, sequenceA, sequenceB);
+                    // Compute cell below.
+                    if (i + j < rows && i < cols) matrix[i + j, i] = computeVal(matrix, prev, i + j, i, sequenceA, sequenceB);
                 }
             }
-            catch (IndexOutOfRangeException e)
-            {
-                Console.WriteLine("rows=" + rows + " cols=" + cols);
-                Console.WriteLine("i=" + i + " j=" + j);
-                
-            }
-            
         }
 
         private int computeVal(int[,] matrix, int[,] prev, int row, int col, GeneSequence sequenceA, GeneSequence sequenceB)
         {
+            // Get the two letters to compare.
             char letterA = sequenceA.Sequence[row - 1];
             char letterB = sequenceB.Sequence[col - 1];
-            int diagVal = letterA == letterB ? -3 : 1;
+            int diagVal = letterA == letterB ? -3 : 1;      // If they are the same, the diagonal score is -3, otherwise 1
             int indelVal = 5;
 
+            // If the diagnoal score is the smallest of the three, store the DIAG value in the prev matrix and return the cost for the cell at matrix[row,col]
             if (matrix[row - 1, col - 1] + diagVal <= matrix[row - 1, col] + indelVal && matrix[row - 1, col - 1] + diagVal <= matrix[row, col - 1] + indelVal)
             {
                 prev[row, col] = DIAG;
                 return matrix[row - 1, col - 1] + diagVal;
             }
+            // Else if the indel score from above is the smallest, store the UP value in the prev matrix and return the cost
             else if (matrix[row - 1, col] + indelVal < matrix[row - 1, col - 1] + diagVal && matrix[row - 1, col] + indelVal <= matrix[row, col - 1] + indelVal)
             {
                 prev[row, col] = UP;
                 return matrix[row - 1, col] + indelVal;
             }
+            // Else the indel score from the left must be the smallest. Store it in prev and return the cost.
             else
             {
                 prev[row, col] = LEFT;
@@ -154,6 +165,7 @@ namespace GeneticsLab
 
         private void unrestricted(int[,] matrix, int[,] prev, int rows, int cols, GeneSequence sequenceA, GeneSequence sequenceB)
         {
+            // For every cell from top left to bottom right, compute the value. Compute by row.
             for (int i = 1; i < rows; i++)
             {
                 for (int j = 1; j < cols; j++)
@@ -165,6 +177,7 @@ namespace GeneticsLab
 
         private void initializeMatrices(int[,] matrix, int[,] prev, int rows, int cols)
         {
+            // Initialize the first row and first column with indel values.
             int val = 0;
             for (int i = 0; i < cols; i++)
             {
@@ -181,6 +194,7 @@ namespace GeneticsLab
             }
         }
 
+        // Helper function to pring matrices to the console. Helpful to debug the smaller problems before moving to bigger ones.
         private void printMatrices(int[,] matrix, int[,] prev, int rows, int cols)
         {
             for (int i = 0; i < rows; i++)
