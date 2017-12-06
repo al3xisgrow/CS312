@@ -4,7 +4,8 @@ using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
 using System.Diagnostics;
-
+using Priority_Queue;
+using WindowsFormsApplication1;
 
 namespace TSP
 {
@@ -370,6 +371,9 @@ namespace TSP
             return results;
         }
 
+
+        SimplePriorityQueue<BBNode> priorityQueue= new SimplePriorityQueue<BBNode>();
+
         /// <summary>
         /// performs a Branch and Bound search of the state space of partial tours
         /// stops when time limit expires and uses BSSF as solution
@@ -378,16 +382,167 @@ namespace TSP
         public string[] bBSolveProblem()
         {
             string[] results = new string[3];
+            Stopwatch timer = new Stopwatch();
+            int intermediateSolutions = 0;
 
-            // TODO: Add your implementation for a branch and bound solver here.
+            defaultSolveProblem();
 
+            timer.Start();
 
-            results[COST] = "not implemented";    // load results into array here, replacing these dummy values
-            results[TIME] = "-1";
-            results[COUNT] = "-1";
+            // initialize the root node
+            List<int> children = new List<int>();
+            int[,] matrix = initializeCostMatrix(Cities, ref children, 0);
+            printMatrix(matrix, "Absolute Cost:");
+            BBNode rootNode = new BBNode(children, matrix, 0);      // 0 is it's row index in the cost matrix
+            rootNode.reduceMatrix();
+            printMatrix(rootNode.costMatrix, "Root Reduced Matrix:");
+            Console.WriteLine("\nRoot.LocalBound = " + rootNode.localBound);
+            rootNode.Route.Add(Cities[0]);          // the route starts at itself
+
+            // initialize the priority queue (add the root)
+            priorityQueue.Enqueue(rootNode, 0);
+            double costOfBSSF = bssf.costOfRoute();
+            Console.WriteLine("BSSF cost:" + costOfBSSF);
+
+            bool timesUp = false;
+
+            while (!timesUp && priorityQueue.Count > 0)
+            {
+                BBNode node = priorityQueue.Dequeue();
+                foreach (int child in node.children)
+                {
+                    if (timer.Elapsed.TotalMilliseconds > time_limit)
+                    {
+                        timesUp = true;
+                    }
+                    int costToNode = node.costMatrix[node.rowIndex, child];
+                    if ((costToNode < int.MaxValue) && (costToNode + node.localBound) < costOfBSSF)      // we want to do something with it.
+                    {
+                        List<int> childrenToPass = new List<int>(node.children);
+                        childrenToPass.Remove(child);
+                        int[,] childMatrix = infinityOutMatrix(node.costMatrix, node.rowIndex, child);
+                        BBNode childNode = new BBNode(childrenToPass, childMatrix, child);
+                        childNode.localBound = node.localBound + node.costMatrix[node.rowIndex, child];
+                        childNode.reduceMatrix();
+                        childNode.Route.AddRange(node.Route);
+                        childNode.Route.Add(Cities[child]);
+
+                        // if it's a leaf, update the BSSF
+                        if (childNode.children.Count == 0)
+                        {
+                            if (childNode.localBound < costOfBSSF)
+                            {
+                                bssf = new TSPSolution(childNode.Route);
+                                Console.WriteLine();
+                                Console.WriteLine("New Solution found better than: " + costOfBSSF);
+                                costOfBSSF = bssf.costOfRoute();
+                                Console.WriteLine("New path cost: " + costOfBSSF);
+                                Console.WriteLine("child.LocalBound=" + childNode.localBound);
+                                printRoute(childNode);
+
+                                printMatrix(childNode.costMatrix, "Matrix:");
+
+                                intermediateSolutions++;
+                            }                        }
+                        else    // otherwise, add it to the queue.
+                        {
+                            priorityQueue.Enqueue(childNode, (float)(childNode.localBound/childNode.Route.Count *1.25));
+                            if (priorityQueue.Count > 719)
+                                Console.WriteLine("Exceeded maximum nodes. Something's wrong");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Child:" + child + " From Node:" + node.rowIndex + " is getting ignored");
+                        Console.WriteLine("costOfBSSF:" + costOfBSSF + " node.costMatrix[node.row,child]:" + node.costMatrix[node.rowIndex, child] + " node.localbound:" + node.localBound);
+                    }
+                    // otherwise ignore it. Definitely not part of the solution.
+                }
+            }
+
+            timer.Stop();
+            results[COST] = bssf.costOfRoute().ToString();    // load results into array here, replacing these dummy values
+            results[TIME] = timer.Elapsed.ToString();
+            results[COUNT] = intermediateSolutions.ToString();
 
             return results;
         }
+
+
+        private void printRoute(BBNode node)
+        {
+            List<City> cities = new List<City>(Cities);
+            Console.WriteLine("Route: ");
+            foreach (Object obj in node.Route)
+            {
+                City city = (City)obj;
+                Console.Write(cities.IndexOf(city) + "->");
+            }
+            Console.WriteLine(cities.IndexOf((City)node.Route[0]));
+        }
+
+        private void printMatrix(int[,] matrix, string message=null)
+        {
+            Console.WriteLine();
+            if (message != null)
+            {
+                Console.WriteLine(message);
+            }
+            Console.Write("[");
+            for (int i = 0; i < matrix.GetLength(0); i++)
+            {
+                Console.Write("[");
+                for (int j = 0; j < matrix.GetLength(1); j++)
+                {
+                    Console.Write(matrix[i, j]);
+                    if (j < matrix.GetLength(1) - 1) Console.Write(",");
+                }
+                Console.Write("]\n");
+            }
+            Console.Write("]");
+        }
+
+        private int[,] infinityOutMatrix(int[,] parent, int row, int col)
+        {
+            int[,] matrix = new int[parent.GetLength(0), parent.GetLength(1)];
+            for (int i = 0; i < parent.GetLength(0); i++)
+            {
+                for (int j = 0; j < parent.GetLength(1); j++)
+                {
+                    if (i == row || j == col || (j == row && i == col))
+                    {
+                        matrix[i, j] = int.MaxValue;
+                    }
+                    else
+                    {
+                        matrix[i, j] = parent[i, j];
+                    }
+                }
+            }
+            return matrix;
+        }
+
+        private int[,] initializeCostMatrix(City[] cities, ref List<int> children, int me)
+        {
+            int[,] matrix = new int[cities.Length, cities.Length];
+            for (int i = 0; i < cities.Length; i++)
+            {
+                for (int j = 0; j < cities.Length; j++)
+                {
+                    if (i == j)
+                    {
+                        matrix[i, j] = int.MaxValue;
+                    }
+                    else
+                    {
+                        matrix[i, j] = (int)cities[i].costToGetTo(cities[j]);
+                    }
+                }
+                if (i != me) children.Add(i);
+            }
+            return matrix;
+        }
+
 
         /////////////////////////////////////////////////////////////////////////////////////////////
         // These additional solver methods will be implemented as part of the group project.
