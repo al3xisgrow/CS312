@@ -46,12 +46,12 @@ namespace WindowsFormsApplication1
                 }
                 if (rowMinVal > 0 && rowMinVal < int.MaxValue)
                 {
-                    Console.WriteLine("RowMin Value: " + rowMinVal + " Found at index: " + row + "," + rowMinIndex);
+                    //Console.WriteLine("RowMin Value: " + rowMinVal + " Found at index: " + row + "," + rowMinIndex);
                     for (int col = 0; col < costMatrix.GetLength(1); col++)
                     {
                         if(costMatrix[row, col] < int.MaxValue) costMatrix[row, col] -= rowMinVal;
                     }
-                    Console.WriteLine("Adding " + rowMinVal + " to localBound of " + localBound);
+                    //Console.WriteLine("Adding " + rowMinVal + " to localBound of " + localBound);
                     localBound += rowMinVal;
                 }
 
@@ -71,7 +71,7 @@ namespace WindowsFormsApplication1
                 }
                 if (colMinVal > 0 && colMinVal < int.MaxValue)
                 {
-                    Console.WriteLine("ColMin Value: " + colMinVal + " Found at index: " + col + "," + colMinIndex);
+                    //Console.WriteLine("ColMin Value: " + colMinVal + " Found at index: " + col + "," + colMinIndex);
                     for (int row = 0; row < costMatrix.GetLength(0); row++)
                     {
                         if (costMatrix[row, col] < int.MaxValue)
@@ -80,7 +80,7 @@ namespace WindowsFormsApplication1
                         } 
                     }
 
-                    Console.WriteLine("Adding " + colMinVal + " to localBound of " + localBound);
+                    //Console.WriteLine("Adding " + colMinVal + " to localBound of " + localBound);
                     localBound += colMinVal;
                 }
             }

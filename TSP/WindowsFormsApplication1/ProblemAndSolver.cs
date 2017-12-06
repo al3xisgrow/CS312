@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Diagnostics;
 using Priority_Queue;
 using WindowsFormsApplication1;
+using System.Windows.Forms;
 
 namespace TSP
 {
@@ -384,7 +385,9 @@ namespace TSP
             string[] results = new string[3];
             Stopwatch timer = new Stopwatch();
             int intermediateSolutions = 0;
-
+            int numStatesCreated = 0;
+            int maxInQueue = 0;
+            int numStatesPruned = 0;
             defaultSolveProblem();
 
             timer.Start();
@@ -392,78 +395,90 @@ namespace TSP
             // initialize the root node
             List<int> children = new List<int>();
             int[,] matrix = initializeCostMatrix(Cities, ref children, 0);
-            printMatrix(matrix, "Absolute Cost:");
+            //printMatrix(matrix, "Absolute Cost:");
             BBNode rootNode = new BBNode(children, matrix, 0);      // 0 is it's row index in the cost matrix
             rootNode.reduceMatrix();
-            printMatrix(rootNode.costMatrix, "Root Reduced Matrix:");
-            Console.WriteLine("\nRoot.LocalBound = " + rootNode.localBound);
+            //printMatrix(rootNode.costMatrix, "Root Reduced Matrix:");
+            //Console.WriteLine("\nRoot.LocalBound = " + rootNode.localBound);
             rootNode.Route.Add(Cities[0]);          // the route starts at itself
 
             // initialize the priority queue (add the root)
             priorityQueue.Enqueue(rootNode, 0);
             double costOfBSSF = bssf.costOfRoute();
-            Console.WriteLine("BSSF cost:" + costOfBSSF);
+            //Console.WriteLine("BSSF cost:" + costOfBSSF);
 
             bool timesUp = false;
 
             while (!timesUp && priorityQueue.Count > 0)
             {
                 BBNode node = priorityQueue.Dequeue();
-                foreach (int child in node.children)
+                if (node.localBound < costOfBSSF)
                 {
-                    if (timer.Elapsed.TotalMilliseconds > time_limit)
+                    foreach (int child in node.children)
                     {
-                        timesUp = true;
-                    }
-                    int costToNode = node.costMatrix[node.rowIndex, child];
-                    if ((costToNode < int.MaxValue) && (costToNode + node.localBound) < costOfBSSF)      // we want to do something with it.
-                    {
-                        List<int> childrenToPass = new List<int>(node.children);
-                        childrenToPass.Remove(child);
-                        int[,] childMatrix = infinityOutMatrix(node.costMatrix, node.rowIndex, child);
-                        BBNode childNode = new BBNode(childrenToPass, childMatrix, child);
-                        childNode.localBound = node.localBound + node.costMatrix[node.rowIndex, child];
-                        childNode.reduceMatrix();
-                        childNode.Route.AddRange(node.Route);
-                        childNode.Route.Add(Cities[child]);
-
-                        // if it's a leaf, update the BSSF
-                        if (childNode.children.Count == 0)
+                        // Check if time has expired
+                        if (timer.Elapsed.TotalMilliseconds > time_limit)
                         {
-                            if (childNode.localBound < costOfBSSF)
-                            {
-                                bssf = new TSPSolution(childNode.Route);
-                                Console.WriteLine();
-                                Console.WriteLine("New Solution found better than: " + costOfBSSF);
-                                costOfBSSF = bssf.costOfRoute();
-                                Console.WriteLine("New path cost: " + costOfBSSF);
-                                Console.WriteLine("child.LocalBound=" + childNode.localBound);
-                                printRoute(childNode);
-
-                                printMatrix(childNode.costMatrix, "Matrix:");
-
-                                intermediateSolutions++;
-                            }                        }
-                        else    // otherwise, add it to the queue.
-                        {
-                            priorityQueue.Enqueue(childNode, (float)(childNode.localBound/childNode.Route.Count *1.25));
-                            if (priorityQueue.Count > 719)
-                                Console.WriteLine("Exceeded maximum nodes. Something's wrong");
+                            timesUp = true;
                         }
+                        // Find the cost to the child node from the current node
+                        int costToNode = node.costMatrix[node.rowIndex, child];
+
+                        if ((costToNode < int.MaxValue) && (costToNode + node.localBound) < costOfBSSF)      // we want to create a new state
+                        {
+                            List<int> childrenToPass = new List<int>(node.children);
+                            childrenToPass.Remove(child);
+                            int[,] childMatrix = infinityOutMatrix(node.costMatrix, node.rowIndex, child);
+                            BBNode childNode = new BBNode(childrenToPass, childMatrix, child);              // Create a state
+                            childNode.localBound = node.localBound + node.costMatrix[node.rowIndex, child];
+                            childNode.reduceMatrix();
+                            childNode.Route.AddRange(node.Route);
+                            childNode.Route.Add(Cities[child]);
+                            numStatesCreated++;
+
+                            // if it's a leaf, update the BSSF
+                            if (childNode.children.Count == 0)
+                            {
+                                if (childNode.localBound < costOfBSSF)
+                                {
+                                    bssf = new TSPSolution(childNode.Route);
+                                    costOfBSSF = bssf.costOfRoute();
+                                    intermediateSolutions++;
+                                }
+                            }
+                            else    // otherwise, add it to the queue.
+                            {
+                                priorityQueue.Enqueue(childNode, (float)(childNode.localBound / (childNode.Route.Count * 1000)));
+                                if (priorityQueue.Count > maxInQueue)
+                                {
+                                    maxInQueue = priorityQueue.Count;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            numStatesPruned++;
+                        }
+                        // otherwise ignore it. Definitely not part of the solution.
                     }
-                    else
-                    {
-                        Console.WriteLine("Child:" + child + " From Node:" + node.rowIndex + " is getting ignored");
-                        Console.WriteLine("costOfBSSF:" + costOfBSSF + " node.costMatrix[node.row,child]:" + node.costMatrix[node.rowIndex, child] + " node.localbound:" + node.localBound);
-                    }
-                    // otherwise ignore it. Definitely not part of the solution.
                 }
+                else numStatesPruned++;
+                
             }
 
             timer.Stop();
             results[COST] = bssf.costOfRoute().ToString();    // load results into array here, replacing these dummy values
             results[TIME] = timer.Elapsed.ToString();
             results[COUNT] = intermediateSolutions.ToString();
+
+            // Used to fill out the table in the report
+            String storedStates = "Max Stored States: " + maxInQueue + "\n";
+            String statesCreated = "Total States Created: " + numStatesCreated + "\n";
+            String statesPruned = "Total State Pruned: " + numStatesPruned + "\n";
+            MessageBox.Show(storedStates + statesCreated + statesPruned);
+            Console.WriteLine(storedStates);
+            Console.WriteLine(statesCreated);
+            Console.WriteLine(statesPruned);
 
             return results;
         }
